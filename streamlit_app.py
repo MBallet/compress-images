@@ -3,6 +3,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import os
+import zipfile
 
 # Function to download image from URL
 def download_image(url):
@@ -31,6 +32,23 @@ def compress_image(image, quality=50):
     img_bytes.seek(0)
     return img_bytes
 
+# Function to create a ZIP file containing the images
+def create_zip(images, mode="original"):
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for idx, image_data in enumerate(images):
+            img_bytes = BytesIO()
+            if mode == "original":
+                image_data["original"].save(img_bytes, format=image_data["format"])
+                filename = image_data["filename"]
+            elif mode == "compressed":
+                img_bytes = image_data["compressed"]
+                filename = f"compressed_{image_data['filename']}"
+            img_bytes.seek(0)
+            zip_file.writestr(filename, img_bytes.read())
+    zip_buffer.seek(0)
+    return zip_buffer
+
 # Initialize session state for storing images and filenames
 if "images" not in st.session_state:
     st.session_state.images = []
@@ -57,20 +75,17 @@ if st.button("Download Images"):
         st.session_state.images = []
         st.session_state.filenames = []
         
-        # Download and display each image
+        # Download and store each image
         for idx, url in enumerate(image_urls):
             img, original_url = download_image(url)
             if img:
-                # Display the image
-                st.image(img, caption=f"Image {idx + 1}", use_column_width=True)
-                
                 # Extract original filename
                 original_filename = get_filename_from_url(original_url)
                 img_format = img.format.lower() if img.format else "jpeg"
                 file_extension = os.path.splitext(original_filename)[1] or f".{img_format}"
                 full_filename = original_filename if file_extension else f"{original_filename}.{img_format}"
 
-                # Store the original image and its filename in session state
+                # Store the original image and its compressed version in session state
                 st.session_state.images.append({
                     "original": img,
                     "compressed": compress_image(img, quality=compression_quality),
@@ -80,27 +95,22 @@ if st.button("Download Images"):
     else:
         st.error("Please enter at least one image URL.")
 
-# If images are stored in session state, display download buttons
+# If images are stored in session state, provide options to download all as a ZIP
 if st.session_state.images:
-    for idx, image_data in enumerate(st.session_state.images):
-        original_img = image_data["original"]
-        compressed_img_bytes = image_data["compressed"]
-        original_filename = image_data["filename"]
-        img_format = image_data["format"]
+    # Button to download all original images as ZIP
+    original_zip = create_zip(st.session_state.images, mode="original")
+    st.download_button(
+        label="Download All Original Images as ZIP",
+        data=original_zip,
+        file_name="original_images.zip",
+        mime="application/zip"
+    )
 
-        # Provide a download button for the original image
-        st.download_button(
-            label=f"Download {original_filename}",
-            data=BytesIO(original_img.tobytes()),
-            file_name=original_filename,
-            mime=f"image/{img_format}"
-        )
-
-        # Provide a download button for the compressed image
-        compressed_filename = f"compressed_{original_filename}"
-        st.download_button(
-            label=f"Download Compressed {compressed_filename}",
-            data=compressed_img_bytes,
-            file_name=compressed_filename,
-            mime=f"image/{img_format}"
-        )
+    # Button to download all compressed images as ZIP
+    compressed_zip = create_zip(st.session_state.images, mode="compressed")
+    st.download_button(
+        label="Download All Compressed Images as ZIP",
+        data=compressed_zip,
+        file_name="compressed_images.zip",
+        mime="application/zip"
+    )
