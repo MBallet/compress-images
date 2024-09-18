@@ -7,7 +7,7 @@ import io
 # Set your Tinify API key
 tinify.key = 'kW1hRH2j31ndX4d6CY0bMmRdrgsn32Gn'  # Replace with your actual API key
 
-st.title('Image Compressor using Tinify API')
+st.title('Matt\'s Image Compressor')
 st.write('Upload image(s) to compress them using the Tinify API.')
 
 # File uploader allows multiple files
