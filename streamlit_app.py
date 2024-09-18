@@ -49,4 +49,4 @@ if uploaded_files:
             mime="application/zip"
         )
 else:
-    st.info('Please upload at least one image file.')
+    st.info('Please upload at least one image file to begin.')
